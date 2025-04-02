@@ -37,7 +37,7 @@ class AudioDataset(Dataset):
         The dataset is expected to be in a csv file, where each row will
         contain at least two columns: filename and label.
     """
-    def __init__(self, datafile,  audio_path = ''):
+    def __init__(self, datafile,  audio_path = '', label_map = None):
         """ The constructor loads the dataset into memory
             Parameters:
                datafile: csv file containing the dataset
@@ -47,22 +47,36 @@ class AudioDataset(Dataset):
                             and 16 bits per sample. 
         """
 
+
+        n_fft = 400
         mel_spectrogram = T.MelSpectrogram(
-            n_fft=512,
-            n_mels=64,
+            n_fft = n_fft,
+            center = True,
+            power = 2.0,
+            norm = 'slaney',
+            n_mels=40,
+            hop_length = n_fft // 2,
             mel_scale="htk",
         )
 
         
         self.features = []
         self.labels = []
+
+        if not label_map:
+            self.label_map = {}
+        else:
+            self.label_map = label_map
+     
+        
         tmp_label_map = {}
         df = pd.read_csv(datafile)
         for index, row in df.iterrows():
             label = row['label']
-            if not label in tmp_label_map:
-                tmp_label_map[label] = len(tmp_label_map)
-            self.labels.append(tmp_label_map[label])
+            if not label in self.label_map:
+                self.label_map[label] = len(self.label_map)
+
+            self.labels.append(self.label_map[label])
             filename = row['filename']
 
             waveform, sample_rate = torchaudio.load(os.path.join(audio_path,filename))
@@ -71,7 +85,7 @@ class AudioDataset(Dataset):
             mel_spec = mel_spectrogram(waveform)[0]
             self.features.append(torch.transpose(mel_spec,0,1))
 
-        self.label_map =  dict((v,k) for k,v in tmp_label_map.items())
+       
 
 
         
