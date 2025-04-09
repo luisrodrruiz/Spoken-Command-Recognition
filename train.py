@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-from dataset import AudioDataset, collate_fn
+from dataset import StockDataset
 from torch.utils.data import DataLoader
-from crnn import CRNNModel, RNNModel
+from models import rnn
 import sys
 import os
 import argparse
@@ -11,12 +11,11 @@ import argparse
 class SpeechModelTrainer:
     def __init__(self, train_file, dev_file, audio_path = '', batch_size = 16, learning_rate = 0.0001, model = 'cnn', out_dir = '/tmp'):
 
-        if model != 'rnn' and  model != 'crnn':
-            print('ERROR. Only "crnn" or "rnn" models are available')
+        if model != 'rnn':
+            print('ERROR. Only "rnn" models are available')
             quit()
 
-        train_dataset = AudioDataset(train_file, audio_path = audio_path)
-
+        train_dataset = StockDataset(train_file, audio_path = audio_path)
         if model == 'rnn':
             self.model = RNNModel(train_dataset.get_sample_shape()[-1],train_dataset.get_num_classes())
             
@@ -28,6 +27,8 @@ class SpeechModelTrainer:
             n_classes = train_dataset.get_num_classes()
             self.model.add_gru(rnn_input_size,n_classes)
 
+        if model =='vit':
+            self.model = VisionTransformer(train_dataset.get_max_len(),train_dataset.get_num_classes(), in_channels = 1)
      
         self.model.cuda()
         print('model = ', self.model)
@@ -98,7 +99,7 @@ def main():
     parser.add_argument('--train_csv_file', help = 'csv file for the training dataset. Each row in the csv must have at least two columns: "filename" and "label:', required = True)
     parser.add_argument('--dev_csv_file', help = 'csv file for the dev dataset. Each row in the csv must have at least two columns: "filename" and "label:', required = True)
     parser.add_argument('--audio_path', help = 'path that will be prepend to the file names in both the train and dev csv files', required = False, default = '')
-    parser.add_argument('--model', help = 'model (available models: cnn, rnn) ' , default = 'crnn')
+    parser.add_argument('--model', help = 'model (available models: crnn, rnn) ' , default = 'crnn')
     parser.add_argument('--out_dir', help = 'directory where the model will be saved', default = '/tmp')
     args = parser.parse_args()
     trainer = SpeechModelTrainer(args.train_csv_file, args.dev_csv_file, audio_path = args.audio_path, model = args.model, out_dir = args.out_dir)
